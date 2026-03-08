@@ -1,0 +1,483 @@
+{% extends "base.html" %}
+
+{% block title %}Whale Relay | Telegram x MetaTrader{% endblock %}
+
+{% block body %}
+{% set state = bootstrap|default({}) %}
+
+<header class="topbar reveal">
+  <a class="brand-chip panel" href="/" aria-label="Whale Relay home">
+    <span class="brand-chip-mark">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo Whale Relay">
+    </span>
+    <span class="brand-chip-copy">
+      <strong>Whale Relay</strong>
+      <small>Telegram x MetaTrader</small>
+    </span>
+  </a>
+
+  <nav class="route-pills panel" aria-label="Sezioni dashboard">
+    <a href="#telegram-section">Telegram</a>
+    <a href="#telegram-bot-section">Bot Control</a>
+    <a href="#mt5-section">MetaTrader</a>
+    <a href="#trading-section">Trading</a>
+    <a href="#runtime-column">Runtime</a>
+  </nav>
+</header>
+
+<section class="hero-grid">
+  <article class="hero panel reveal">
+    <div class="hero-brand">
+      <div class="hero-mark">
+        <span class="hero-mark-glow" aria-hidden="true"></span>
+        <img class="hero-logo" src="{{ url_for('static', filename='logo.png') }}" alt="Logo Whale Relay">
+      </div>
+
+      <div class="hero-copy">
+        <p class="eyebrow">Ocean control deck</p>
+        <h1>Gestionale Telegram x MetaTrader con flusso semplice e identita' visiva coerente.</h1>
+        <p class="hero-text">
+          Configura il relay, autorizza la sessione, verifica il bridge MetaTrader e controlla log e segnali attivi da una sola dashboard locale.
+        </p>
+      </div>
+    </div>
+
+    <div class="hero-flow" aria-label="Flusso operativo">
+      <article class="workflow-card">
+        <span class="workflow-index">01</span>
+        <strong>Configura</strong>
+        <p>Imposta Telegram, MetaTrader e regole operative essenziali.</p>
+      </article>
+      <article class="workflow-card">
+        <span class="workflow-index">02</span>
+        <strong>Connetti</strong>
+        <p>Invia il codice Telegram e valida il terminale di esecuzione.</p>
+      </article>
+      <article class="workflow-card">
+        <span class="workflow-index">03</span>
+        <strong>Gestisci</strong>
+        <p>Osserva runtime, posizioni e stato del servizio in tempo reale.</p>
+      </article>
+    </div>
+  </article>
+
+  <aside class="command-panel panel reveal">
+    <div class="section-head compact">
+      <div>
+        <p class="eyebrow">Command dock</p>
+        <h2>Operativita' immediata</h2>
+      </div>
+      <span class="section-badge" data-status-field="service_state">Fermo</span>
+    </div>
+
+    <div class="clock-wrap">
+      <span class="clock-label">Rome</span>
+      <strong id="live-clock">--:--:--</strong>
+    </div>
+
+    <p class="panel-copy" data-status-field="status_note">In attesa di configurazione</p>
+
+    <div class="hero-actions">
+      <button class="action action-ghost" type="button" data-action="refresh-status">Refresh</button>
+      <button class="action action-dark" type="button" data-action="save-config">Salva config</button>
+      <button class="action action-accent" type="button" data-action="start-bot">Avvia bot</button>
+      <button class="action action-outline" type="button" data-action="stop-bot">Stop bot</button>
+    </div>
+
+    <section class="command-checks" aria-label="Check rapidi">
+      <div class="section-head compact command-checks-head">
+        <div>
+          <p class="eyebrow">Check rapidi</p>
+          <h2>Verifica integrazioni</h2>
+        </div>
+        <span class="section-badge" data-status-field="diagnostic_summary">nessun check</span>
+      </div>
+      <div class="check-actions">
+        <button class="action action-outline" type="button" data-action="check-telegram">Check Telegram</button>
+        <button class="action action-outline" type="button" data-action="test-mt5">Check MetaTrader</button>
+        <button class="action action-accent" type="button" data-action="check-all">Check completo</button>
+      </div>
+    </section>
+
+    <div class="dock-note">
+      <strong>Flusso consigliato</strong>
+      <p>Salva, invia il codice Telegram, testa MetaTrader e avvia il servizio solo quando i due bridge sono pronti.</p>
+    </div>
+  </aside>
+</section>
+
+<section class="status-strip reveal" aria-label="Stato runtime">
+  <article class="status-card status-card--service panel">
+    <span class="status-label">Service</span>
+    <strong class="status-value" data-status-field="service_state">Inattivo</strong>
+    <small class="status-meta" data-status-field="status_note">In attesa di configurazione</small>
+  </article>
+
+  <article class="status-card status-card--telegram panel">
+    <span class="status-label">Telegram</span>
+    <strong class="status-value" data-status-field="telegram_state">Sessione non verificata</strong>
+    <small class="status-meta">Listener, codice e sessione locale</small>
+  </article>
+
+  <article class="status-card status-card--telegram panel">
+    <span class="status-label">Bot Control</span>
+    <strong class="status-value" data-status-field="control_bot_state">Fermo</strong>
+    <small class="status-meta">Bot Telegram con whitelist utenti</small>
+  </article>
+
+  <article class="status-card status-card--mt5 panel">
+    <span class="status-label">MetaTrader</span>
+    <strong class="status-value" data-status-field="mt5_state">Bridge pronto per test</strong>
+    <small class="status-meta">Piattaforma, terminale, account e healthcheck</small>
+  </article>
+
+  <article class="status-card status-card--signals panel">
+    <span class="status-label">Segnali attivi</span>
+    <strong class="status-value" data-status-field="active_signals_count">0</strong>
+    <small class="status-meta">Posizioni aperte o pending</small>
+  </article>
+</section>
+
+<main class="dashboard-grid">
+  <section class="config-column">
+    <form id="config-form" class="stack-grid" autocomplete="off">
+      <article id="telegram-section" class="panel form-panel panel-telegram reveal">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">01 / Telegram relay</p>
+            <h2>Collega il canale sorgente</h2>
+            <p class="section-copy">Campi essenziali per creare la sessione locale e agganciare la sorgente corretta del listener.</p>
+          </div>
+          <div class="section-tools">
+            <span class="section-badge">listener</span>
+            <button class="mini-action" type="button" data-action="send-code">Invia codice</button>
+          </div>
+        </div>
+
+        <div class="form-grid two-col">
+          <label class="field">
+            <span>API ID</span>
+            <input type="text" name="api_id" data-path="telegram.api_id" placeholder="12345678">
+          </label>
+          <label class="field">
+            <span>API Hash</span>
+            <input type="text" name="api_hash" data-path="telegram.api_hash" placeholder="hash Telegram">
+          </label>
+          <label class="field">
+            <span>Session Name</span>
+            <input type="text" name="session_name" data-path="telegram.session_name" placeholder="telegram_mt5_bot">
+          </label>
+          <label class="field">
+            <span>Phone Number</span>
+            <input type="text" name="phone_number" data-path="telegram.phone_number" placeholder="+39...">
+          </label>
+          <label class="field full-span">
+            <span>Source Chat</span>
+            <input type="text" name="source_chat" data-path="telegram.source_chat" placeholder="@channel oppure -100...">
+          </label>
+        </div>
+
+        <div class="inline-callout">
+          <div>
+            <strong>Login Telegram</strong>
+            <p>Quando ricevi il codice, apri il pannello dedicato e completa il sign-in con eventuale 2FA.</p>
+          </div>
+          <button class="action action-outline" type="button" data-action="open-auth">Apri login</button>
+        </div>
+      </article>
+
+      <article id="telegram-bot-section" class="panel form-panel panel-telegram reveal">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">01B / Telegram bot control</p>
+            <h2>Controllo remoto dal bot</h2>
+            <p class="section-copy">Configura il token del bot e gli utenti autorizzati a usare i comandi di stato e controllo del relay.</p>
+          </div>
+          <div class="section-tools">
+            <span class="section-badge">control</span>
+            <button class="mini-action" type="button" data-action="start-control-bot">Avvia control bot</button>
+          </div>
+        </div>
+
+        <div class="form-grid two-col">
+          <label class="field full-span">
+            <span>Bot Token</span>
+            <input type="password" name="bot_token" data-path="telegram_bot.bot_token" placeholder="123456:ABC...">
+          </label>
+          <label class="field">
+            <span>Bot Session Name</span>
+            <input type="text" name="telegram_bot_session_name" data-path="telegram_bot.session_name" placeholder="telegram_control_bot">
+          </label>
+          <label class="field">
+            <span>Utenti autorizzati per ID</span>
+            <textarea name="allowed_user_ids_text" data-path="telegram_bot.allowed_user_ids_text" rows="4" placeholder="123456789&#10;987654321"></textarea>
+          </label>
+          <label class="field">
+            <span>Utenti autorizzati per username</span>
+            <textarea name="allowed_usernames_text" data-path="telegram_bot.allowed_usernames_text" rows="4" placeholder="mionomeutente&#10;admin_trade"></textarea>
+          </label>
+        </div>
+
+        <div class="inline-callout">
+          <div>
+            <strong>Whitelist</strong>
+            <p>Gli utenti non presenti in whitelist possono usare solo <code>/id</code>. I comandi operativi sono limitati alle chat private autorizzate.</p>
+          </div>
+          <div class="hero-actions">
+            <button class="action action-accent" type="button" data-action="start-control-bot">Avvia</button>
+            <button class="action action-outline" type="button" data-action="stop-control-bot">Stop</button>
+          </div>
+        </div>
+      </article>
+
+      <article id="mt5-section" class="panel form-panel panel-mt5 reveal">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">02 / MetaTrader</p>
+            <h2>Configura il bridge di esecuzione</h2>
+            <p class="section-copy">Piattaforma, path del terminale, credenziali del conto e parametri base per ordini e riconoscimento.</p>
+          </div>
+          <div class="section-tools">
+            <span class="section-badge">bridge</span>
+            <button class="mini-action" type="button" data-action="test-mt5">Test MetaTrader</button>
+          </div>
+        </div>
+
+        <div class="form-grid two-col">
+          <label class="field">
+            <span>Piattaforma</span>
+            <select name="platform" data-path="mt5.platform">
+              <option value="mt4">MetaTrader 4</option>
+              <option value="mt5">MetaTrader 5</option>
+            </select>
+          </label>
+          <label class="field full-span">
+            <span>Terminal Path</span>
+            <input type="text" name="terminal_path" data-path="mt5.terminal_path" placeholder="/path/to/terminal64.exe">
+          </label>
+          <label class="field">
+            <span>Login</span>
+            <input type="text" name="login" data-path="mt5.login" placeholder="Account login">
+          </label>
+          <label class="field">
+            <span>Server</span>
+            <input type="text" name="server" data-path="mt5.server" placeholder="Broker server">
+          </label>
+          <label class="field">
+            <span>Password</span>
+            <input type="password" name="password" data-path="mt5.password" placeholder="Password conto">
+          </label>
+          <label class="field">
+            <span>Magic</span>
+            <input type="number" name="magic" data-path="mt5.magic" placeholder="260326">
+          </label>
+          <label class="field">
+            <span>Comment Prefix</span>
+            <input type="text" name="comment_prefix" data-path="mt5.comment_prefix" placeholder="tgsignal">
+          </label>
+          <label class="field">
+            <span>Deviation Points</span>
+            <input type="number" name="deviation_points" data-path="mt5.deviation_points" placeholder="50">
+          </label>
+          <label class="toggle-field full-span">
+            <input type="checkbox" name="portable" data-path="mt5.portable" data-type="bool">
+            <span>Portable mode attivo per initialize(portable=True)</span>
+          </label>
+          <article class="form-note full-span">
+            <strong>Nota MT4</strong>
+            <p>MT4 non ha il binding Python ufficiale usato qui per MT5. Per ordini reali su MT4 serve un bridge dedicato con EA MQL4.</p>
+          </article>
+        </div>
+      </article>
+
+      <article id="trading-section" class="panel form-panel panel-trading reveal">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">03 / Trading policy</p>
+            <h2>Definisci la ricetta operativa</h2>
+            <p class="section-copy">Volume, modalita' di esecuzione, gestione progressiva dei TP e filtri per mantenere il gestionale lineare.</p>
+          </div>
+          <span class="section-badge">auto / market / pending</span>
+        </div>
+
+        <div class="form-grid three-col">
+          <label class="field">
+            <span>Default Volume</span>
+            <input type="number" step="0.01" name="default_volume" data-path="trading.default_volume" placeholder="0.01">
+          </label>
+          <label class="field">
+            <span>Execution Mode</span>
+            <select name="execution_mode" data-path="trading.execution_mode">
+              <option value="auto">auto</option>
+              <option value="market">market</option>
+              <option value="pending">pending</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Market Deviation</span>
+            <input type="number" name="max_market_deviation_points" data-path="trading.max_market_deviation_points" placeholder="80">
+          </label>
+          <label class="field">
+            <span>TP fallback (legacy)</span>
+            <select name="selected_tp_level" data-path="trading.selected_tp_level">
+              <option value="1">TP1</option>
+              <option value="2">TP2</option>
+              <option value="3">TP3</option>
+            </select>
+          </label>
+          <label class="toggle-field">
+            <input type="checkbox" name="allow_pending_orders" data-path="trading.allow_pending_orders" data-type="bool">
+            <span>Permetti ordini pending</span>
+          </label>
+          <label class="toggle-field">
+            <input type="checkbox" name="prevent_duplicate_symbol" data-path="trading.prevent_duplicate_symbol" data-type="bool">
+            <span>Blocca duplicati sullo stesso simbolo</span>
+          </label>
+          <label class="toggle-field full-span">
+            <input type="checkbox" name="apply_final_tp_to_broker" data-path="trading.apply_final_tp_to_broker" data-type="bool">
+            <span>Imposta ogni TP direttamente sul broker</span>
+          </label>
+          <article class="form-note full-span">
+            <strong>Nota TP</strong>
+            <p>Il bot apre un'operazione per ogni TP presente nel segnale. Il campo legacy resta solo come fallback tecnico per compatibilita'.</p>
+          </article>
+          <label class="field full-span">
+            <span>Symbol Map</span>
+            <textarea name="symbol_map_text" data-path="trading.symbol_map_text" rows="5" placeholder="XAUUSD=XAUUSDm"></textarea>
+          </label>
+          <label class="field full-span">
+            <span>Allowed Symbols</span>
+            <textarea name="allowed_symbols_text" data-path="trading.allowed_symbols_text" rows="4" placeholder="XAUUSD&#10;EURUSD"></textarea>
+          </label>
+        </div>
+      </article>
+    </form>
+  </section>
+
+  <aside id="runtime-column" class="insight-column">
+    <article class="panel side-panel emphasis-panel reveal">
+      <div class="section-head compact">
+        <div>
+          <p class="eyebrow">Session access</p>
+          <h2>Autorizzazione Telegram</h2>
+        </div>
+        <span class="section-badge">2 step</span>
+      </div>
+
+      <p class="auth-copy">
+        Primo step: invia il codice al numero salvato. Secondo step: conferma codice e password 2FA dal dialog dedicato.
+      </p>
+
+      <div class="step-list">
+        <article class="step-item">
+          <span>1</span>
+          <div>
+            <strong>Invia codice</strong>
+            <p>Usa il pulsante rapido dopo aver salvato i dati Telegram.</p>
+          </div>
+        </article>
+        <article class="step-item">
+          <span>2</span>
+          <div>
+            <strong>Completa login</strong>
+            <p>Inserisci il codice ricevuto e, se serve, la password 2FA.</p>
+          </div>
+        </article>
+      </div>
+
+      <div class="auth-actions">
+        <button class="action action-ghost" type="button" data-action="send-code">Invia codice</button>
+        <button class="action action-accent" type="button" data-action="open-auth">Completa login</button>
+      </div>
+    </article>
+
+    <article class="panel side-panel reveal">
+      <div class="section-head compact">
+        <div>
+          <p class="eyebrow">Diagnostics</p>
+          <h2>Check di sistema</h2>
+        </div>
+        <span class="section-badge" data-status-field="diagnostic_summary">nessun check</span>
+      </div>
+
+      <div id="diagnostic-board" class="diagnostic-board"></div>
+    </article>
+
+    <article class="panel side-panel reveal">
+      <div class="section-head compact">
+        <div>
+          <p class="eyebrow">Signals board</p>
+          <h2>Posizioni attive</h2>
+        </div>
+        <span class="section-badge" data-status-field="signal_snapshot">flat</span>
+      </div>
+
+      <div id="signal-board" class="signal-board"></div>
+    </article>
+
+    <article class="panel side-panel reveal">
+      <div class="section-head compact">
+        <div>
+          <p class="eyebrow">Runtime tape</p>
+          <h2>Log live</h2>
+        </div>
+        <span class="section-badge" data-status-field="log_cursor">cursor 0</span>
+      </div>
+
+      <div id="log-console" class="log-console" aria-live="polite"></div>
+    </article>
+  </aside>
+</main>
+
+<section id="toast-stack" class="toast-stack" aria-live="assertive" aria-atomic="true"></section>
+
+<dialog id="auth-dialog" class="auth-dialog">
+  <form method="dialog" class="auth-card panel">
+    <div class="section-head compact">
+      <div>
+        <p class="eyebrow">Telegram handshake</p>
+        <h2>Completa l'autorizzazione</h2>
+      </div>
+      <button class="dialog-close" type="submit" aria-label="Chiudi">x</button>
+    </div>
+
+    <p class="dialog-copy">Inserisci il codice ricevuto su Telegram e, se richiesto, la password 2FA dell'account.</p>
+
+    <div class="form-grid">
+      <label class="field">
+        <span>Verification code</span>
+        <input type="text" id="auth-code" placeholder="12345">
+      </label>
+      <label class="field">
+        <span>Password 2FA</span>
+        <input type="password" id="auth-password" placeholder="Lascia vuoto se non richiesta">
+      </label>
+    </div>
+
+    <div class="dialog-actions">
+      <button class="action action-outline" type="submit">Annulla</button>
+      <button class="action action-accent" id="confirm-auth" type="button">Conferma sessione</button>
+    </div>
+  </form>
+</dialog>
+
+<script id="bootstrap-data" type="application/json">{{ state|tojson }}</script>
+<template id="signal-template">
+  <article class="signal-card">
+    <div class="signal-head">
+      <span class="signal-symbol"></span>
+      <span class="signal-side"></span>
+    </div>
+    <div class="signal-body">
+      <div><span>Entry</span><strong class="signal-entry"></strong></div>
+      <div><span>SL</span><strong class="signal-sl"></strong></div>
+      <div><span>Status</span><strong class="signal-status"></strong></div>
+      <div><span>Volume</span><strong class="signal-volume"></strong></div>
+    </div>
+  </article>
+</template>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='app.js') }}" defer></script>
+{% endblock %}

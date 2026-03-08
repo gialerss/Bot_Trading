@@ -1,0 +1,41 @@
+{
+  "telegram": {
+    "api_id": "30754986",
+    "api_hash": "628cda3805afe5f25a065b4eb0520e5f",
+    "session_name": "telegram_mt5_bot",
+    "phone_number": "+393926460510",
+    "source_chat": "-1002073368935"
+  },
+  "telegram_bot": {
+    "bot_token": "8603068943:AAFsOD3vduwdLBoTJT8ViSnMPiaqZzyi0SA",
+    "session_name": "telegram_control_bot",
+    "allowed_user_ids_text": "",
+    "allowed_usernames_text": "mattialopresti"
+  },
+  "mt5": {
+    "platform": "mt4",
+    "terminal_path": "",
+    "login": "",
+    "password": "",
+    "server": "",
+    "portable": false,
+    "magic": 260326,
+    "comment_prefix": "tgsignal",
+    "deviation_points": 50
+  },
+  "trading": {
+    "default_volume": 0.01,
+    "execution_mode": "auto",
+    "max_market_deviation_points": 80,
+    "selected_tp_level": 2,
+    "allow_pending_orders": true,
+    "prevent_duplicate_symbol": true,
+    "apply_final_tp_to_broker": true,
+    "tp1_close_percent": 50.0,
+    "tp2_close_percent": 25.0,
+    "tp3_close_percent": 25.0,
+    "generic_tp_close_percent": 100.0,
+    "symbol_map_text": "",
+    "allowed_symbols_text": ""
+  }
+}
