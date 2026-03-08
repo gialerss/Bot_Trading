@@ -77,6 +77,11 @@ class BotService:
     def is_running(self) -> bool:
         return self._runtime is not None
 
+    def telegram_diagnostics_snapshot(self) -> dict[str, str | bool] | None:
+        if self._runtime is None:
+            return None
+        return self._runtime.listener.diagnostics_snapshot()
+
     def _worker_loop(self, processor: SignalProcessor, stop_event: threading.Event) -> None:
         while not stop_event.is_set():
             try:

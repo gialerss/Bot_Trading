@@ -18,13 +18,27 @@ class TelegramListener:
         self._stop_event = threading.Event()
         self._loop: asyncio.AbstractEventLoop | None = None
         self._client = None
+        self._started_event = threading.Event()
+        self._startup_error: Exception | None = None
+        self._authorized = False
+        self._source_chat_ok = False
+        self._source_chat_label = ""
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
             raise RuntimeError("Listener Telegram gia' attivo.")
         self._stop_event.clear()
+        self._started_event.clear()
+        self._startup_error = None
+        self._authorized = False
+        self._source_chat_ok = False
+        self._source_chat_label = ""
         self._thread = threading.Thread(target=self._run, name="telegram-listener", daemon=True)
         self._thread.start()
+        if not self._started_event.wait(timeout=15):
+            raise RuntimeError("Timeout durante l'avvio del listener Telegram.")
+        if self._startup_error is not None:
+            raise RuntimeError(str(self._startup_error))
 
     def stop(self) -> None:
         self._stop_event.set()
@@ -39,6 +53,8 @@ class TelegramListener:
         try:
             self._loop.run_until_complete(self._main())
         except Exception as exc:
+            self._startup_error = exc
+            self._started_event.set()
             self.log(f"Listener Telegram fermato per errore: {exc}")
         finally:
             pending = asyncio.all_tasks(self._loop)
@@ -64,8 +80,13 @@ class TelegramListener:
         await self._client.connect()
         if not await self._client.is_user_authorized():
             raise RuntimeError("Sessione Telegram non autorizzata. Usa il pulsante 'Autorizza Telegram'.")
+        self._authorized = True
 
         entity = await resolve_chat_entity(self._client, source_chat)
+        entity_title = await _entity_label(self._client, entity, source_chat)
+        self._source_chat_ok = True
+        self._source_chat_label = entity_title
+        self._started_event.set()
 
         @self._client.on(events.NewMessage(chats=entity))
         async def _handler(event) -> None:
@@ -80,12 +101,40 @@ class TelegramListener:
             )
             self.on_message(message)
 
-        self.log(f"Telegram in ascolto su {source_chat}.")
+        self.log(f"Telegram in ascolto su {entity_title}.")
         while not self._stop_event.is_set():
             await asyncio.sleep(0.5)
 
         await self._client.disconnect()
         self._client = None
+
+    def diagnostics_snapshot(self) -> dict[str, str | bool]:
+        if self._startup_error is not None:
+            message = str(self._startup_error)
+            return {
+                "authorized": False,
+                "session_message": message,
+                "source_chat_ok": False,
+                "source_chat_message": "Controllo canale non completato.",
+            }
+
+        if not self._authorized:
+            return {
+                "authorized": False,
+                "session_message": "Listener Telegram non ancora pronto.",
+                "source_chat_ok": False,
+                "source_chat_message": "Source Chat non ancora verificato.",
+            }
+
+        source_chat_message = "Source Chat risolto correttamente."
+        if self._source_chat_label:
+            source_chat_message = f"Source Chat risolto correttamente: {self._source_chat_label}."
+        return {
+            "authorized": True,
+            "session_message": "Sessione Telegram gia' in uso dal relay attivo.",
+            "source_chat_ok": self._source_chat_ok,
+            "source_chat_message": source_chat_message if self._source_chat_ok else "Source Chat non verificato.",
+        }
 
 
 def authorize_session(config: AppConfig, prompt_callback, log_callback) -> None:
@@ -147,6 +196,18 @@ async def resolve_chat_entity(client: Any, source_chat: str):
         if int(dialog.id) == reference:
             return await client.get_input_entity(dialog.entity)
     raise RuntimeError(f"Cannot find any entity corresponding to {source_chat!r}")
+
+
+async def _entity_label(client: Any, entity: Any, source_chat: str) -> str:
+    try:
+        resolved = await client.get_entity(entity)
+    except Exception:
+        return str(source_chat)
+    return (
+        getattr(resolved, "title", None)
+        or getattr(resolved, "username", None)
+        or str(source_chat)
+    )
 
 
 def _parse_api_id(value: str) -> int:

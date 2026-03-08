@@ -2,6 +2,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 from telegram_mt5_bot.web.controller import BotController
 
@@ -101,6 +102,31 @@ class WebControllerTests(unittest.TestCase):
         self.assertEqual(diagnostics["summary"]["failed"], 1)
         self.assertFalse(diagnostics["summary"]["ok"])
         self.assertEqual(len(diagnostics["checks"]), 3)
+
+    def test_build_telegram_checks_uses_running_service_snapshot(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            previous = Path.cwd()
+            os.chdir(tmp_dir)
+            try:
+                controller = BotController()
+                controller._service = SimpleNamespace(
+                    is_running=True,
+                    telegram_diagnostics_snapshot=lambda: {
+                        "authorized": True,
+                        "session_message": "Sessione Telegram gia' in uso dal relay attivo.",
+                        "source_chat_ok": True,
+                        "source_chat_message": "Source Chat risolto correttamente: Test Channel.",
+                    },
+                )
+                checks = controller._build_telegram_checks()
+            finally:
+                os.chdir(previous)
+
+        self.assertEqual(len(checks), 2)
+        self.assertTrue(checks[0]["ok"])
+        self.assertEqual(checks[0]["detail"], "Sessione Telegram gia' in uso dal relay attivo.")
+        self.assertTrue(checks[1]["ok"])
+        self.assertEqual(checks[1]["detail"], "Source Chat risolto correttamente: Test Channel.")
 
 
 if __name__ == "__main__":

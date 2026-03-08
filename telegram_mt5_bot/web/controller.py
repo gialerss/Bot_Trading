@@ -201,6 +201,24 @@ class BotController:
                 self._logs.append(log_message)
 
     def _build_telegram_checks(self) -> list[dict[str, Any]]:
+        if self._service is not None and self._service.is_running:
+            inspection = self._service.telegram_diagnostics_snapshot()
+            if inspection is not None:
+                return [
+                    {
+                        "key": "telegram_session",
+                        "label": "Telegram sessione",
+                        "ok": bool(inspection.get("authorized")),
+                        "detail": str(inspection.get("session_message", "Controllo sessione completato.")),
+                    },
+                    {
+                        "key": "telegram_source_chat",
+                        "label": "Telegram source chat",
+                        "ok": bool(inspection.get("source_chat_ok")),
+                        "detail": str(inspection.get("source_chat_message", "Controllo canale completato.")),
+                    },
+                ]
+
         try:
             inspection = self._auth.inspect_session(self._config)
         except Exception as exc:
