@@ -42,27 +42,19 @@ class MT5Client:
             init_kwargs["path"] = self.config.mt5.terminal_path
         if self.config.mt5.portable:
             init_kwargs["portable"] = True
-
-        if not mt5.initialize(**init_kwargs):
-            raise RuntimeError(f"MT5 initialize fallita: {self._last_error(mt5)}")
-
         if self.config.mt5.login:
             sanitized_login = strip_format_chars(self.config.mt5.login).strip()
             try:
-                login_value = int(sanitized_login)
+                init_kwargs["login"] = int(sanitized_login)
             except ValueError as exc:
-                mt5.shutdown()
                 raise RuntimeError(f"MT5 login non valido: {self.config.mt5.login!r}") from exc
-            login_kwargs: dict[str, Any] = {
-                "login": login_value,
-            }
             if self.config.mt5.password:
-                login_kwargs["password"] = self.config.mt5.password
+                init_kwargs["password"] = self.config.mt5.password
             if self.config.mt5.server:
-                login_kwargs["server"] = self.config.mt5.server
-            if not mt5.login(**login_kwargs):
-                mt5.shutdown()
-                raise RuntimeError(f"MT5 login fallito: {self._last_error(mt5)}")
+                init_kwargs["server"] = self.config.mt5.server
+
+        if not mt5.initialize(**init_kwargs):
+            raise RuntimeError(f"MT5 initialize fallita: {self._last_error(mt5)}")
 
         self._mt5 = mt5
         self._connected = True
@@ -79,7 +71,10 @@ class MT5Client:
         terminal_info = self._mt5.terminal_info()
         if not terminal_info:
             raise RuntimeError(f"MT5 terminal_info non disponibile: {self._last_error(self._mt5)}")
-        return str(terminal_info)
+        account_info = self._mt5.account_info()
+        if not account_info:
+            return f"TerminalInfo={terminal_info}"
+        return f"TerminalInfo={terminal_info}; AccountInfo={account_info}"
 
     def place_signal(
         self,

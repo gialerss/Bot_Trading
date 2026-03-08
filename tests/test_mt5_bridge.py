@@ -14,16 +14,12 @@ class MtBridgeTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "bridge dedicato"):
             client.connect()
 
-    def test_connect_strips_invisible_unicode_from_login_before_mt5_login(self):
+    def test_connect_passes_sanitized_login_to_initialize(self):
         calls: dict[str, object] = {}
 
         class FakeMt5:
             def initialize(self, **kwargs):
                 calls["initialize"] = kwargs
-                return True
-
-            def login(self, **kwargs):
-                calls["login"] = kwargs
                 return True
 
             def shutdown(self):
@@ -46,7 +42,37 @@ class MtBridgeTests(unittest.TestCase):
 
         client.connect()
 
-        self.assertEqual(calls["login"], {"login": 7003005, "password": "pw", "server": "demo"})
+        self.assertEqual(calls["initialize"], {"login": 7003005, "password": "pw", "server": "demo"})
+        client.disconnect()
+
+    def test_healthcheck_includes_account_info_when_available(self):
+        class FakeMt5:
+            def initialize(self, **kwargs):
+                return True
+
+            def shutdown(self):
+                return None
+
+            def last_error(self):
+                return (1, "Success")
+
+            def terminal_info(self):
+                return SimpleNamespace(company="MetaQuotes Ltd.", name="MetaTrader 5")
+
+            def account_info(self):
+                return SimpleNamespace(login=7003005, server="KeyToMarkets-Server", company="Key To Markets")
+
+        class TestClient(MT5Client):
+            def _import_mt5(self):
+                return FakeMt5()
+
+        client = TestClient(AppConfig(mt5=Mt5Settings()), lambda *_: None)
+
+        detail = client.healthcheck()
+
+        self.assertIn("TerminalInfo=", detail)
+        self.assertIn("AccountInfo=", detail)
+        self.assertIn("KeyToMarkets-Server", detail)
         client.disconnect()
 
 
