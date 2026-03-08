@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import unicodedata
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -8,6 +9,10 @@ from typing import Any
 
 DEFAULT_CONFIG_PATH = Path("config.json")
 DEFAULT_STATE_PATH = Path("runtime_state.json")
+
+
+def strip_format_chars(value: str) -> str:
+    return "".join(char for char in value if unicodedata.category(char) != "Cf")
 
 
 @dataclass(slots=True)

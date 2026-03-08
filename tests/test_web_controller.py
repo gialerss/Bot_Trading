@@ -128,6 +128,18 @@ class WebControllerTests(unittest.TestCase):
         self.assertTrue(checks[1]["ok"])
         self.assertEqual(checks[1]["detail"], "Source Chat risolto correttamente: Test Channel.")
 
+    def test_coerce_config_strips_invisible_unicode_from_mt5_login(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            previous = Path.cwd()
+            os.chdir(tmp_dir)
+            try:
+                controller = BotController()
+                config = controller._coerce_config({"mt5": {"login": "7003005\u200e"}})
+            finally:
+                os.chdir(previous)
+
+        self.assertEqual(config.mt5.login, "7003005")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -4,7 +4,7 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
-from telegram_mt5_bot.config import AppConfig
+from telegram_mt5_bot.config import AppConfig, strip_format_chars
 from telegram_mt5_bot.models import ActiveSignalState, OpenSignalEvent, TradeSide
 
 
@@ -47,8 +47,14 @@ class MT5Client:
             raise RuntimeError(f"MT5 initialize fallita: {self._last_error(mt5)}")
 
         if self.config.mt5.login:
+            sanitized_login = strip_format_chars(self.config.mt5.login).strip()
+            try:
+                login_value = int(sanitized_login)
+            except ValueError as exc:
+                mt5.shutdown()
+                raise RuntimeError(f"MT5 login non valido: {self.config.mt5.login!r}") from exc
             login_kwargs: dict[str, Any] = {
-                "login": int(self.config.mt5.login),
+                "login": login_value,
             }
             if self.config.mt5.password:
                 login_kwargs["password"] = self.config.mt5.password

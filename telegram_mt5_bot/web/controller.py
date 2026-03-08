@@ -6,7 +6,7 @@ from itertools import count
 from threading import Lock
 from typing import Any
 
-from telegram_mt5_bot.config import AppConfig, ConfigStore, Mt5Settings, TelegramBotSettings, TelegramSettings, TradingSettings
+from telegram_mt5_bot.config import AppConfig, ConfigStore, Mt5Settings, TelegramBotSettings, TelegramSettings, TradingSettings, strip_format_chars
 from telegram_mt5_bot.control_bot import TelegramControlBot
 from telegram_mt5_bot.models import utc_now_iso
 from telegram_mt5_bot.service import BotService
@@ -344,7 +344,7 @@ class BotController:
             mt5=Mt5Settings(
                 platform=str(mt5_payload.get("platform", mt5_defaults.platform)).strip().lower() or mt5_defaults.platform,
                 terminal_path=str(mt5_payload.get("terminal_path", mt5_defaults.terminal_path)).strip(),
-                login=str(mt5_payload.get("login", mt5_defaults.login)).strip(),
+                login=strip_format_chars(str(mt5_payload.get("login", mt5_defaults.login))).strip(),
                 password=str(mt5_payload.get("password", mt5_defaults.password)),
                 server=str(mt5_payload.get("server", mt5_defaults.server)).strip(),
                 portable=self._as_bool(mt5_payload.get("portable", mt5_defaults.portable)),
@@ -381,11 +381,15 @@ class BotController:
     def _as_int(self, value: Any, default: int) -> int:
         if value in (None, ""):
             return default
+        if isinstance(value, str):
+            value = strip_format_chars(value).strip()
         return int(value)
 
     def _as_float(self, value: Any, default: float) -> float:
         if value in (None, ""):
             return default
+        if isinstance(value, str):
+            value = strip_format_chars(value).strip()
         return float(value)
 
     def _as_bool(self, value: Any) -> bool:
