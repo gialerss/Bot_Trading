@@ -365,27 +365,28 @@
       </div>
 
       <p class="auth-copy">
-        Primo step: invia il codice al numero salvato. Secondo step: conferma codice e password 2FA dal dialog dedicato.
+        Puoi autorizzare Telegram in due modi: QR code da scansionare con l'app oppure codice manuale e password 2FA dal dialog dedicato.
       </p>
 
       <div class="step-list">
         <article class="step-item">
           <span>1</span>
           <div>
-            <strong>Invia codice</strong>
-            <p>Usa il pulsante rapido dopo aver salvato i dati Telegram.</p>
+            <strong>Avvia QR o codice</strong>
+            <p>Usa il QR se hai Telegram sul telefono; in alternativa resta disponibile l'invio del codice.</p>
           </div>
         </article>
         <article class="step-item">
           <span>2</span>
           <div>
             <strong>Completa login</strong>
-            <p>Inserisci il codice ricevuto e, se serve, la password 2FA.</p>
+            <p>Scansiona il QR oppure inserisci il codice ricevuto e, se serve, la password 2FA.</p>
           </div>
         </article>
       </div>
 
       <div class="auth-actions">
+        <button class="action action-outline" type="button" data-action="start-qr-auth">Mostra QR code</button>
         <button class="action action-ghost" type="button" data-action="send-code">Invia codice</button>
         <button class="action action-accent" type="button" data-action="open-auth">Completa login</button>
       </div>
@@ -443,6 +444,14 @@
 
     <p class="dialog-copy">Inserisci il codice ricevuto su Telegram e, se richiesto, la password 2FA dell'account.</p>
 
+    <div id="auth-qr-box" class="auth-qr-box" hidden>
+      <div class="auth-qr-frame">
+        <img id="auth-qr-image" class="auth-qr-image" alt="QR code login Telegram">
+      </div>
+      <p id="auth-qr-status" class="auth-qr-status"></p>
+      <a id="auth-qr-link" class="auth-qr-link" href="#" target="_blank" rel="noopener">Apri login Telegram sul desktop</a>
+    </div>
+
     <div class="form-grid">
       <label class="field">
         <span>Verification code</span>
@@ -461,7 +470,7 @@
   </form>
 </dialog>
 
-<script id="bootstrap-data" type="application/json">{{ state|tojson }}</script>
+<script id="bootstrap-data" type="application/json">{{ bootstrap|tojson }}</script>
 <template id="signal-template">
   <article class="signal-card">
     <div class="signal-head">

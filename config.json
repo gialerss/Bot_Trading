@@ -13,7 +13,7 @@
     "allowed_usernames_text": "mattialopresti"
   },
   "mt5": {
-    "platform": "mt4",
+    "platform": "mt5",
     "terminal_path": "",
     "login": "",
     "password": "",
@@ -25,17 +25,17 @@
   },
   "trading": {
     "default_volume": 0.01,
-    "execution_mode": "auto",
-    "max_market_deviation_points": 80,
+    "execution_mode": "market",
+    "max_market_deviation_points": 200,
     "selected_tp_level": 2,
-    "allow_pending_orders": true,
-    "prevent_duplicate_symbol": true,
+    "allow_pending_orders": false,
+    "prevent_duplicate_symbol": false,
     "apply_final_tp_to_broker": true,
     "tp1_close_percent": 50.0,
     "tp2_close_percent": 25.0,
     "tp3_close_percent": 25.0,
     "generic_tp_close_percent": 100.0,
     "symbol_map_text": "",
-    "allowed_symbols_text": ""
+    "allowed_symbols_text": "XAUUSD"
   }
 }

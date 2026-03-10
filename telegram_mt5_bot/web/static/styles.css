@@ -979,6 +979,49 @@ textarea {
   line-height: 1.6;
 }
 
+.auth-qr-box {
+  margin: 0 0 18px;
+  padding: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.auth-qr-frame {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.auth-qr-image {
+  width: min(100%, 260px);
+  aspect-ratio: 1;
+  object-fit: contain;
+  background: #fff;
+  padding: 12px;
+  border-radius: var(--radius-md);
+}
+
+.auth-qr-status {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.auth-qr-link {
+  display: inline-flex;
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.auth-qr-link:hover {
+  text-decoration: underline;
+}
+
 .dialog-actions {
   display: flex;
   justify-content: flex-end;

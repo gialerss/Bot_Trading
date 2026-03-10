@@ -5,6 +5,7 @@ const appState = {
   bootstrap,
   logCursor: bootstrap.log_cursor || 0,
   pollingError: false,
+  qrAuthPolling: null,
 };
 
 const endpoints = {
@@ -18,6 +19,8 @@ const endpoints = {
   telegramCheck: "/api/checks/telegram",
   fullCheck: "/api/checks/all",
   sendCode: "/api/telegram/send-code",
+  startQrAuth: "/api/telegram/qr/start",
+  qrAuthStatus: "/api/telegram/qr/status",
   completeAuth: "/api/telegram/authorize",
   status: "/api/status",
   logs: "/api/logs",
@@ -31,6 +34,10 @@ const logConsole = document.getElementById("log-console");
 const diagnosticBoard = document.getElementById("diagnostic-board");
 const authDialog = document.getElementById("auth-dialog");
 const toastStack = document.getElementById("toast-stack");
+const authQrBox = document.getElementById("auth-qr-box");
+const authQrImage = document.getElementById("auth-qr-image");
+const authQrStatus = document.getElementById("auth-qr-status");
+const authQrLink = document.getElementById("auth-qr-link");
 
 init();
 
@@ -53,7 +60,18 @@ function bindActions() {
       const action = button.dataset.action;
       try {
         if (action === "open-auth") {
+          resetQrAssist();
           authDialog.showModal();
+          return;
+        }
+        if (action === "start-qr-auth") {
+          await saveConfig(false);
+          const result = await postJSON(endpoints.startQrAuth, { config: collectConfig() });
+          mergeRuntimeResponse(result);
+          updateQrAssist(result);
+          authDialog.showModal();
+          startQrPolling();
+          toast(result.message || "QR code Telegram generato.");
           return;
         }
         if (action === "refresh-status") {
@@ -114,6 +132,7 @@ function bindActions() {
         }
         if (action === "send-code") {
           await saveConfig(false);
+          resetQrAssist();
           const result = await postJSON(endpoints.sendCode, { config: collectConfig() });
           mergeRuntimeResponse(result);
           toast(result.message || "Codice Telegram inviato.");
@@ -137,10 +156,12 @@ function bindActions() {
         };
         const result = await postJSON(endpoints.completeAuth, payload);
         mergeRuntimeResponse(result);
+        stopQrPolling();
         toast(result.message || "Sessione Telegram autorizzata.");
         authDialog.close();
         document.getElementById("auth-code").value = "";
         document.getElementById("auth-password").value = "";
+        resetQrAssist();
         await refreshLogs();
       } catch (error) {
         toast(error.message || "Autorizzazione non riuscita.", true);
@@ -370,6 +391,31 @@ function startPolling() {
   }, 5000);
 }
 
+function startQrPolling() {
+  stopQrPolling();
+  appState.qrAuthPolling = window.setInterval(async () => {
+    try {
+      const result = await getJSON(endpoints.qrAuthStatus);
+      mergeRuntimeResponse(result);
+      updateQrAssist(result);
+      if (["authorized", "already_authorized", "expired", "error"].includes(result.status)) {
+        stopQrPolling();
+        await Promise.all([refreshStatus(), refreshLogs()]);
+      }
+    } catch (error) {
+      stopQrPolling();
+      toast(error.message || "Stato QR Telegram non disponibile.", true);
+    }
+  }, 2000);
+}
+
+function stopQrPolling() {
+  if (appState.qrAuthPolling) {
+    window.clearInterval(appState.qrAuthPolling);
+    appState.qrAuthPolling = null;
+  }
+}
+
 function toast(message, isError = false) {
   const node = document.createElement("div");
   node.className = `toast${isError ? " error" : ""}`;
@@ -407,6 +453,33 @@ function setStatusField(name, value) {
   document.querySelectorAll(`[data-status-field="${name}"]`).forEach((node) => {
     node.textContent = value;
   });
+}
+
+function updateQrAssist(result) {
+  if (!authQrBox || !authQrImage || !authQrStatus || !authQrLink) return;
+  const hasQr = Boolean(result?.qr_svg_data_uri);
+  const shouldShow = hasQr || ["starting", "waiting", "password_required", "authorized", "already_authorized", "expired", "error"].includes(result?.status);
+  authQrBox.hidden = !shouldShow;
+  authQrStatus.textContent = result?.message || "";
+  if (hasQr) {
+    authQrImage.src = result.qr_svg_data_uri;
+    authQrImage.hidden = false;
+  } else {
+    authQrImage.removeAttribute("src");
+    authQrImage.hidden = true;
+  }
+  if (result?.url) {
+    authQrLink.href = result.url;
+    authQrLink.hidden = false;
+  } else {
+    authQrLink.href = "#";
+    authQrLink.hidden = true;
+  }
+}
+
+function resetQrAssist() {
+  stopQrPolling();
+  updateQrAssist({ status: "idle", message: "", url: "", qr_svg_data_uri: "" });
 }
 
 function getNested(object, path) {

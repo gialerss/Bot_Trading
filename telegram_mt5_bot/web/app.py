@@ -93,6 +93,16 @@ def create_app():
         result = controller.request_telegram_code()
         return jsonify({"ok": True, **result, "status": controller.get_status_payload()})
 
+    @app.post("/api/telegram/qr/start")
+    def start_qr_login():
+        result = controller.start_telegram_qr_login()
+        return jsonify({"ok": True, **result, "status": controller.get_status_payload()})
+
+    @app.get("/api/telegram/qr/status")
+    def qr_login_status():
+        result = controller.telegram_qr_login_status()
+        return jsonify({"ok": True, **result, "status": controller.get_status_payload()})
+
     @app.post("/api/telegram/authorize")
     def authorize():
         payload = request.get_json(silent=True) or {}

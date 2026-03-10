@@ -46,6 +46,7 @@ class BotController:
         self._config = self._config_store.load()
         self._service: BotService | None = None
         self._control_bot: TelegramControlBot | None = None
+        self._resume_service_after_telegram_auth = False
         self._auth = TelegramAuthManager()
         self._logs = LogBuffer()
         self._diagnostics = self._empty_diagnostics()
@@ -86,11 +87,13 @@ class BotController:
 
     def start_bot(self) -> dict[str, Any]:
         with self._lock:
+            self._resume_service_after_telegram_auth = False
             self._start_locked()
         return self.get_status_payload()
 
     def stop_bot(self) -> dict[str, Any]:
         with self._lock:
+            self._resume_service_after_telegram_auth = False
             self._stop_locked()
         return self.get_status_payload()
 
@@ -111,13 +114,81 @@ class BotController:
         return result
 
     def request_telegram_code(self) -> dict[str, str]:
-        result = self._auth.request_code(self._config)
+        restart_service = False
+        with self._lock:
+            if self.is_running:
+                self._stop_locked(log_message="Servizio fermato per richiedere il codice Telegram.")
+                self._resume_service_after_telegram_auth = True
+                restart_service = True
+            else:
+                self._resume_service_after_telegram_auth = False
+        try:
+            result = self._auth.request_code(self._config)
+        except Exception as exc:
+            self._logs.append(f"Richiesta codice Telegram fallita: {exc}", level="error")
+            if restart_service:
+                with self._lock:
+                    self._start_locked(log_message="Servizio riavviato dopo il fallimento della richiesta codice Telegram.")
+                    self._resume_service_after_telegram_auth = False
+            raise
         self._logs.append(result["message"])
+        if result["status"] == "already_authorized" and restart_service:
+            with self._lock:
+                self._start_locked(log_message="Servizio riavviato: sessione Telegram gia' autorizzata.")
+                self._resume_service_after_telegram_auth = False
+        return result
+
+    def start_telegram_qr_login(self) -> dict[str, str]:
+        restart_service = False
+        with self._lock:
+            if self.is_running:
+                self._stop_locked(log_message="Servizio fermato per avviare il login Telegram via QR.")
+                self._resume_service_after_telegram_auth = True
+                restart_service = True
+            else:
+                self._resume_service_after_telegram_auth = False
+        try:
+            result = self._auth.start_qr_login(self._config)
+        except Exception as exc:
+            self._logs.append(f"Avvio QR code Telegram fallito: {exc}", level="error")
+            if restart_service:
+                with self._lock:
+                    self._start_locked(log_message="Servizio riavviato dopo il fallimento del QR code Telegram.")
+                    self._resume_service_after_telegram_auth = False
+            raise
+        self._logs.append(result["message"])
+        if result["status"] == "already_authorized" and restart_service:
+            with self._lock:
+                self._start_locked(log_message="Servizio riavviato: sessione Telegram gia' autorizzata.")
+                self._resume_service_after_telegram_auth = False
+        return result
+
+    def telegram_qr_login_status(self) -> dict[str, str]:
+        result = self._auth.qr_login_status(self._config)
+        if result["status"] in {"authorized", "already_authorized"}:
+            with self._lock:
+                if self._resume_service_after_telegram_auth and not self.is_running:
+                    self._start_locked(log_message="Servizio riavviato dopo l'autorizzazione Telegram via QR.")
+                self._resume_service_after_telegram_auth = False
+        elif result["status"] in {"expired", "error"}:
+            with self._lock:
+                if self._resume_service_after_telegram_auth and not self.is_running:
+                    self._start_locked(log_message="Servizio riavviato dopo il termine del login Telegram via QR.")
+                self._resume_service_after_telegram_auth = False
         return result
 
     def complete_telegram_auth(self, code: str, password: str = "") -> dict[str, str]:
-        result = self._auth.complete_sign_in(self._config, code=code, password=password)
+        try:
+            result = self._auth.complete_sign_in(self._config, code=code, password=password)
+        except Exception as exc:
+            self._logs.append(f"Autorizzazione Telegram fallita: {exc}", level="error")
+            raise
         self._logs.append(result["message"])
+        if result["status"] in {"authorized", "already_authorized"}:
+            with self._lock:
+                if self._resume_service_after_telegram_auth and not self.is_running:
+                    self._start_locked(log_message="Servizio riavviato dopo l'autorizzazione Telegram.")
+                self._resume_service_after_telegram_auth = False
         return result
 
     def diagnostics_payload(self) -> dict[str, Any]:
